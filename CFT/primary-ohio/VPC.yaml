@@ -1,0 +1,436 @@
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+# passing VPCCIDR block
+  Vpc1CIDR:
+    Description: Enter the IP range for london VPC
+    Type: String
+    Default: 192.168.0.0/16
+# dividing it in subnets CIDR blocks
+  VPC1PublicSubnet1CIDR:
+    Description: Enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    Default: 192.168.0.0/18
+
+  VPC1PublicSubnet2CIDR:
+    Description: Enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+    Default: 192.168.64.0/18
+
+  VPC1PrivateSubnet1CIDR:
+    Description: Enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
+    Type: String
+    Default: 192.168.128.0/18
+
+  VPC1PrivateSubnet2CIDR:
+    Description: Enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
+    Type: String
+    Default: 192.168.192.0/18
+# giving db name
+  DBName:
+    Default: BookProject
+    Description: The database name
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: must begin with a letter and contain only alphanumeric
+      characters.
+# asking for username
+  DBUser:
+    NoEcho: 'false'
+    Description: The database admin account username
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: must begin with a letter and contain only alphanumeric
+      characters.
+# create password for db instance
+  DBPassword:
+    NoEcho: 'true'
+    Description: The database admin account password
+    Type: String
+    MinLength: '1'
+    MaxLength: '41'
+    AllowedPattern: "[a-zA-Z0-9]+"
+    ConstraintDescription: must contain only alphanumeric characters.
+# giving 5gb database storage space
+  DBAllocatedStorage:
+    Default: '5'
+    Description: The size of the database (Gb)
+    Type: Number
+    MinValue: '5'
+    MaxValue: '1024'
+    ConstraintDescription: must be between 5 and 1024Gb.
+  # creating db instance for t2.micro
+  DBInstanceClass:
+    Description: The database instance type
+    Type: String
+    Default: db.t2.micro
+    AllowedValues:
+    - db.t1.micro
+    - db.m1.small
+    - db.m1.medium
+    - db.m1.large
+    - db.m1.xlarge
+    - db.m2.xlarge
+    - db.m2.2xlarge
+    - db.m2.4xlarge
+    - db.m3.medium
+    - db.m3.large
+    - db.m3.xlarge
+    - db.m3.2xlarge
+    - db.m4.large
+    - db.m4.xlarge
+    - db.m4.2xlarge
+    - db.m4.4xlarge
+    - db.m4.10xlarge
+    - db.r3.large
+    - db.r3.xlarge
+    - db.r3.2xlarge
+    - db.r3.4xlarge
+    - db.r3.8xlarge
+    - db.m2.xlarge
+    - db.m2.2xlarge
+    - db.m2.4xlarge
+    - db.cr1.8xlarge
+    - db.t2.micro
+    - db.t2.small
+    - db.t2.medium
+    - db.t2.large
+    ConstraintDescription: must select a valid database instance type.
+  # multi AZ parameter
+  MultiAZ:
+    Description: Multi-AZ master database
+    Type: String
+    Default: 'true'
+    AllowedValues:
+    - 'true'
+    - 'false'
+    ConstraintDescription: must be true or false.
+# replica source and target region
+  SourceRegion:
+    Type: String
+    Description: The region to replicate from.
+    Default: eu-west-2
+  TargetRegion:
+    Type: String
+    Description: The region to replicate to.
+    Default: us-east-2
+  
+Conditions:
+  Is-EC2-VPC:
+    Fn::Or:
+    - Fn::Equals:
+      - Ref: AWS::Region
+      - eu-west-2
+    - Fn::Equals:
+      - Ref: AWS::Region
+      - us-east-2
+  Is-EC2-Classic:
+    Fn::Not:
+    - Condition: Is-EC2-VPC
+# creating all VPC resources
+Resources:
+  VPC1:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref Vpc1CIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGateway1:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGatewayAttachment1:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway1
+      VpcId: !Ref VPC1
+
+  VPC1PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC1
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref VPC1PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
+
+  VPC1PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC1
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref VPC1PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ2)
+
+  VPC1PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC1
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref VPC1PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ1)
+
+  VPC1PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC1
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref VPC1PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ2)
+
+  VPC1NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment1
+    Properties:
+      Domain: vpc
+
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt VPC1NatGateway1EIP.AllocationId
+      SubnetId: !Ref VPC1PublicSubnet1
+
+  VPC1PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC1
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Routes
+
+  VPC1DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment1
+    Properties:
+      RouteTableId: !Ref VPC1PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway1
+
+  VPC1PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC1PublicRouteTable
+      SubnetId: !Ref VPC1PublicSubnet1
+
+  VPC1PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC1PublicRouteTable
+      SubnetId: !Ref VPC1PublicSubnet2
+
+  VPC1PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC1
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes (AZ1)
+
+  VPC1DefaultPrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref VPC1PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+
+  VPC1PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC1PrivateRouteTable
+      SubnetId: !Ref VPC1PrivateSubnet1
+
+  VPC1PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC1PrivateRouteTable
+      SubnetId: !Ref VPC1PrivateSubnet2
+  
+  ## Create DB subnet group
+  DBSubnets:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: DBsubnet-group
+      SubnetIds: [ !Ref VPC1PublicSubnet1, !Ref VPC1PublicSubnet2, !Ref VPC1PrivateSubnet1, !Ref VPC1PrivateSubnet2 ]
+      Tags:
+        - Key: Name
+          Value: DBSubnetGroup
+    DependsOn: VPC1
+
+  DBSubnetsReplica:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: DBsubnet-group
+      SubnetIds: [ subnet-030316f6f7c824f6a, subnet-03d8bb1d439f6b231, subnet-0314b5433d8ce8cea, subnet-084d3de05550c00ec ]
+      Tags:
+        - Key: Name
+          Value: DBSubnetGroup
+
+  # our EC2 security group
+  DBEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: Is-EC2-VPC
+    Properties:
+      VpcId:
+        Ref: VPC1
+      GroupDescription: Open database for access
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '3306'
+        ToPort: '3306'
+        CidrIp: 0.0.0.0/0
+  DBSecurityGroup:
+    Type: AWS::RDS::DBSecurityGroup
+    Condition: Is-EC2-Classic
+    Properties:
+      GroupDescription: database access
+      DBSecurityGroupIngress:
+        EC2SecurityGroupName:
+          Ref: DBEC2SecurityGroup
+  # creating RDS master db
+  MasterDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName:
+        Ref: DBName
+      AllocatedStorage:
+        Ref: DBAllocatedStorage
+      DBInstanceClass:
+        Ref: DBInstanceClass
+      Engine: MySQL
+      MasterUsername:
+        Ref: DBUser
+      MasterUserPassword:
+        Ref: DBPassword
+      StorageType: gp2
+      PubliclyAccessible: 'true'
+      MultiAZ:
+        Ref: MultiAZ
+      DBSubnetGroupName: 
+        Ref: DBSubnets
+      Tags:
+      - Key: Name
+        Value: Master Database
+      VPCSecurityGroups:
+        Fn::If:
+        - Is-EC2-VPC
+        - - Fn::GetAtt:
+            - DBEC2SecurityGroup
+            - GroupId
+        - Ref: AWS::NoValue
+      DBSecurityGroups:
+        Fn::If:
+        - Is-EC2-Classic
+        - - Ref: DBSecurityGroup
+        - Ref: AWS::NoValue
+    DeletionPolicy: Snapshot
+    DependsOn: DBSubnets
+# creating a ReadReplica and attaching to Master db
+  ReadReplica:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      StorageType: gp2
+      AllocatedStorage: 10
+      AutoMinorVersionUpgrade: false
+      AllowMajorVersionUpgrade: false
+      CopyTagsToSnapshot: false
+      DeletionProtection: false
+      DBInstanceClass:
+        Ref: DBInstanceClass
+      EnableIAMDatabaseAuthentication: false
+      Engine: mysql
+      EngineVersion: 8.0.33
+      MultiAZ: 'true'
+      OptionGroupName: default:mysql-8-0
+      PubliclyAccessible: 'true'
+      SourceDBInstanceIdentifier:
+        Ref: MasterDB
+      SourceRegion:
+        Ref: TargetRegion
+      VPCSecurityGroups:
+        Fn::If:
+        - Is-EC2-VPC
+        - - Fn::GetAtt:
+            - DBEC2SecurityGroup
+            - GroupId
+        - Ref: AWS::NoValue
+      DBSecurityGroups:
+        Fn::If:
+        - Is-EC2-Classic
+        - - Ref: DBSecurityGroup
+        - Ref: AWS::NoValue
+    DependsOn: 
+      - MasterDB
+      - DBSubnetsReplica
+
+
+Outputs:
+  VPC1:
+    Description: A reference to the created VPC
+    Value: !Ref VPC1
+
+  VPC1PublicSubnets:
+    Description: A list of the public subnets
+    Value: !Join [ ",", [ !Ref VPC1PublicSubnet1, !Ref VPC1PublicSubnet2 ]]
+
+  VPC1PrivateSubnets:
+    Description: A list of the private subnets
+    Value: !Join [ ",", [ !Ref VPC1PrivateSubnet1, !Ref VPC1PrivateSubnet2 ]]
+
+  VPC1PublicSubnet1:
+    Description: A reference to the public subnet in the 1st Availability Zone
+    Value: !Ref VPC1PublicSubnet1
+
+  VPC1PublicSubnet2:
+    Description: A reference to the public subnet in the 2nd Availability Zone
+    Value: !Ref VPC1PublicSubnet2
+
+  VPC1PrivateSubnet1:
+    Description: A reference to the private subnet in the 1st Availability Zone
+    Value: !Ref VPC1PrivateSubnet1
+
+  VPC1PrivateSubnet2:
+    Description: A reference to the private subnet in the 2nd Availability Zone
+    Value: !Ref VPC1PrivateSubnet2
+
+  dbSubnetGroup:
+    Description: Database Subnet Group
+    Value: !Ref DBSubnets
+
+  MasterJDBCConnectionString:
+    Description: JDBC connection string for the master database
+    Value:
+      Fn::Join:
+      - ''
+      - - jdbc:mysql://
+        - Fn::GetAtt:
+          - MasterDB
+          - Endpoint.Address
+        - ":"
+        - Fn::GetAtt:
+          - MasterDB
+          - Endpoint.Port
+        - "/"
+        - Ref: DBName

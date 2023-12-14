@@ -1,0 +1,23 @@
+
+Resources:
+# creating s3 bucket for storing my cloudformation templates and war files
+  MyS3Bucket1:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+      OwnershipControls:
+          Rules:
+            - ObjectOwnership: ObjectWriter
+      BucketName: "london-bookapplication-02-12-2023"
+
+  # creating s3 bucket in case we need to store rdsbackups
+  MyS3Bucket2:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+      OwnershipControls:
+          Rules:
+            - ObjectOwnership: ObjectWriter
+      BucketName: "london-rdsbackups-02-12-2023"

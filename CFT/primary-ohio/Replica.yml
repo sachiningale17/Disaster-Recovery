@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for establishing regional read replicas
+Parameters:
+  DBInstanceClass:
+    Type: String
+    Description: The database subnet group name to use
+    Default: db.t2.micro
+    AllowedValues:
+    - db.r5.large
+    - db.r5.xlarge
+    - db.r5.2xlarge
+    - db.t2.small
+    - db.t2.medium
+    - db.t2.micro
+    - db.t2.large
+  SourceRegion:
+    Type: String
+    Description: The region to replicate from.
+    Default: eu-west-2
+  TargetRegion:
+    Type: String
+    Description: The region to replicate to.
+    Default: us-east-2
+  SourceDBInstanceIdentifier:
+    Type: String
+    Description: The replication source
+  VPCSecurityGroups:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: The list of security groups to associate with this instance
+
+Resources:
+  RstrengthProdReadReplica:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      StorageType: gp2
+      AllocatedStorage: 10
+      AutoMinorVersionUpgrade: false
+      AllowMajorVersionUpgrade: false
+      CopyTagsToSnapshot: false
+      DeletionProtection: false
+      DBInstanceClass:
+        Ref: DBInstanceClass
+      EnableIAMDatabaseAuthentication: false
+      Engine: mysql
+      EngineVersion: 8.0.33
+      MultiAZ: true
+      OptionGroupName: default:mysql-8-0
+      PubliclyAccessible: false
+      SourceDBInstanceIdentifier:
+        Ref: SourceDBInstanceIdentifier
+      SourceRegion:
+        Ref: SourceRegion
+      VPCSecurityGroups:
+        Ref: VPCSecurityGroups

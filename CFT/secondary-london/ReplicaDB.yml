@@ -1,0 +1,13 @@
+Parameters:
+
+Resources:
+  # Create Data DB
+  myReplciaDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      VpcId:
+        Ref: VPC1
+      DBInstanceIdentifier: "read-replica"
+      PubliclyAccessible: true
+      SourceDBInstanceIdentifier: "arn:aws:rds:eu-west-2:312665446329:db:dmlk22xm48g8bg"
+      StorageType: Standard
